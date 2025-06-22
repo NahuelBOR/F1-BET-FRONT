@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "F1 BET",
+  "name": "F1 Predictor App para Carreras de Fórmula 1",
   "icons": [
     {
       "src": "favicon.ico",
