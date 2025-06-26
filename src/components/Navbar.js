@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useState } from 'react';
 import MenuIcon from '@mui/icons-material/Menu';
-import CloseIcon from '@mui/icons-material/Close'; // Opcional, para icono de cierre
+//import CloseIcon from '@mui/icons-material/Close'; // Opcional, para icono de cierre
 import { IconButton, Drawer, List, ListItem, ListItemText } from '@mui/material';
 
 function Navbar() {
@@ -32,7 +32,7 @@ function Navbar() {
 
                 <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                     <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-                        F1 Predictor
+                        F1 BET
                     </Link>
                 </Typography>
 
@@ -48,7 +48,7 @@ function Navbar() {
                                 <Button color="inherit" component={Link} to="/admin">Administración</Button>
                             )}
                             <Button color="inherit" component={Link} to={`/profile/${user._id}`}>
-                                Hola, {user.username}
+                                {user.username}
                             </Button>
                             <Button color="inherit" onClick={logout}>Cerrar Sesión</Button>
                         </>
@@ -74,7 +74,7 @@ function Navbar() {
                 {/* Contenido del menú deslizante */}
                 <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
                     <Typography variant="h6" sx={{ my: 2 }}>
-                        F1 Predictor
+                        F1 BET
                     </Typography>
 
                     <List>
@@ -95,7 +95,7 @@ function Navbar() {
                                     </ListItem>
                                 )}
                                 <ListItem component={Link} to={`/profile/${user._id}`} onClick={handleDrawerToggle}>
-                                    <ListItemText primary={`Hola, ${user.username}`} />
+                                    <ListItemText primary={`${user.username}`} />
                                 </ListItem>
                                 <ListItem onClick={() => { logout(); handleDrawerToggle(); }}>
                                     <ListItemText primary="Cerrar Sesión" />

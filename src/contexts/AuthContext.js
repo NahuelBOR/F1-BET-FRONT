@@ -73,9 +73,31 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Función para actualizar las preferencias del usuario
+    const updateUserPreferences = async (preferences) => {
+        
+        if (!token) {
+            console.error('No token found for updating preferences.');
+            return;
+        }
+        
+        try {
+            const res = await axios.put(`${API_BASE_URL}/users/profile`, preferences, {
+                headers: { 'x-auth-token': token }
+            });
+            setUser(res.data.user); // Actualiza el estado del usuario en el contexto
+            return true; // Éxito
+        } catch (err) {
+
+            console.error('Error updating user preferences:', err.response ? err.response.data : err.message);
+            return false; // Fallo
+        }
+        
+    };
+
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, register, logout, fetchUser }}>
+        <AuthContext.Provider value={{ user, token, loading, login, register, logout, fetchUser, updateUserPreferences }}>
             {children}
         </AuthContext.Provider>
     );

@@ -1,7 +1,5 @@
 // frontend/src/App.js
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './contexts/AuthContext'; // Importa el hook para el contexto
 import Navbar from './components/Navbar'; // Crearemos este componente
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -12,6 +10,11 @@ import RankingPage from './pages/RankingPage';
 import UserProfilePage from './pages/UserProfilePage';
 import { CircularProgress, Box } from '@mui/material'; // Para un indicador de carga
 import AdminPage from './pages/AdminPage';
+import CssBaseline from '@mui/material/CssBaseline';
+import F1_TEAMS from './data/f1Teams';
+import React, { useMemo } from 'react';
+import { ThemeProvider, createTheme } from '@mui/material/styles'; // ¡Añade createTheme aquí!
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Componente de Ruta Protegida
 const PrivateRoute = ({ children, requiredRole }) => {
@@ -38,42 +41,77 @@ const PrivateRoute = ({ children, requiredRole }) => {
     return children;
 };
 
-function App() {
-    return (
-        <Router>
-            <Navbar /> {/* La barra de navegación estará visible en todas las páginas */}
-            <Box component="main" sx={{ p: 3 }}> {/* Contenido principal con padding de Material-UI */}
-                <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/races" element={<RacesPage />} /> {/* Las carreras pueden ser públicas */}
-                    <Route path="/ranking" element={<RankingPage />} /> {/* El ranking puede ser público */}
-                    <Route path="/profile/:id" element={<UserProfilePage />} /> {/* Perfil público, pero detalles privados */}
+function AppContent() { // Crea un componente wrapper para usar useAuth
+    const { user, loading: authLoading } = useAuth();
 
-                    <Route 
-                        path="/admin"
-                        element={
-                            <PrivateRoute requiredRole="admin">
-                                <AdminPage />
-                            </PrivateRoute>
-                        }
-                    />{/* Ruta Protegida para la administración, solo para administradores */}
+    // Determina el color del tema basado en la preferencia del usuario
+    const currentTheme = useMemo(() => {
+        let primaryColor = '#E10600'; // Default F1 Red
+        if (user && user.preferredTeamTheme) {
+            const selectedTeam = F1_TEAMS.find(team => team.id === user.preferredTeamTheme);
+            if (selectedTeam) {
+                primaryColor = selectedTeam.primaryColor;
+            }
+        }
+        return createTheme({
+            palette: {
+                primary: {
+                    main: primaryColor,
+                },
+                // Puedes añadir otros colores aquí si es necesario
+            },
+        });
+    }, [user]); // El tema se recalcula cuando el objeto 'user' cambia
 
-                    {/* Rutas Protegidas */}
-                    <Route
-                        path="/predict/:raceId"
-                        element={
-                            <PrivateRoute>
-                                <PredictPage />
-                            </PrivateRoute>
-                        }
-                    />
-                    {/* Podrías añadir una ruta para editar perfil también si es necesario */}
-                </Routes>
+    if (authLoading) {
+        return (
+            <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
+                <CircularProgress />
             </Box>
-        </Router>
+        );
+    }
+
+    return (
+        <ThemeProvider theme={currentTheme}> {/* Aplica el tema dinámico */}
+            <CssBaseline />
+            <Router>
+                <Navbar />
+                <Box component="main" sx={{ p: 3 }}>
+                    <Routes>
+                        <Route path="/" element={<HomePage />} />
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/register" element={<RegisterPage />} />
+                        <Route path="/races" element={<RacesPage />} />
+                        <Route path="/ranking" element={<RankingPage />} />
+                        <Route path="/profile/:id" element={<UserProfilePage />} />
+                        <Route
+                            path="/admin"
+                            element={
+                                <PrivateRoute requiredRole="admin">
+                                    <AdminPage />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/predict/:raceId"
+                            element={
+                                <PrivateRoute>
+                                    <PredictPage />
+                                </PrivateRoute>
+                            }
+                        />
+                    </Routes>
+                </Box>
+            </Router>
+        </ThemeProvider>
     );
 }
 
+function App() {
+    return (
+        <AuthProvider> {/* AuthProvider ahora envuelve AppContent */}
+            <AppContent />
+        </AuthProvider>
+    );
+}
 export default App;
