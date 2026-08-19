@@ -1,98 +1,185 @@
-// frontend/src/pages/RegisterPage.js
 import React, { useState } from 'react';
-import { Container, Typography, Box, TextField, Button, CircularProgress, Alert } from '@mui/material';
+import {
+  Container,
+  Typography,
+  Box,
+  TextField,
+  Button,
+  CircularProgress,
+  Alert,
+  Paper,
+  Avatar,
+  InputAdornment,
+} from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
+import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
+import PersonIcon from '@mui/icons-material/Person';
+import EmailIcon from '@mui/icons-material/Email';
+import KeyIcon from '@mui/icons-material/Key';
+
 import { useAuth } from '../contexts/AuthContext';
 
 function RegisterPage() {
-    const [username, setUsername] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const { register } = useAuth();
-    const navigate = useNavigate();
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError(null); // Limpiar errores anteriores
-        setLoading(true);
+  const { register } = useAuth();
+  const navigate = useNavigate();
 
-        const result = await register(username, email, password);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
 
-        if (result.success) {
-            navigate('/races'); // Redirigir a la página de carreras después del registro exitoso
-        } else {
-            setError(result.error);
-        }
-        setLoading(false);
-    };
+    const result = await register(username, email, password);
+    if (result.success) {
+      navigate('/races');
+    } else {
+      setError(result.error);
+    }
+    setLoading(false);
+  };
 
-    return (
-        <Container maxWidth="xs" sx={{ mt: 8 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <Typography component="h1" variant="h5">
-                    Registrarse
-                </Typography>
-                <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        id="username"
-                        label="Nombre de Usuario"
-                        name="username"
-                        autoComplete="username"
-                        autoFocus
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                    />
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        id="email"
-                        label="Correo Electrónico"
-                        name="email"
-                        autoComplete="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        name="password"
-                        label="Contraseña"
-                        type="password"
-                        id="password"
-                        autoComplete="new-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
-                    {error && (
-                        <Alert severity="error" sx={{ mt: 2 }}>
-                            {error}
-                        </Alert>
-                    )}
-                    <Button
-                        type="submit"
-                        fullWidth
-                        variant="contained"
-                        sx={{ mt: 3, mb: 2 }}
-                        disabled={loading}
-                    >
-                        {loading ? <CircularProgress size={24} /> : 'Registrarse'}
-                    </Button>
-                    <Box sx={{ textAlign: 'center' }}>
-                        <Link to="/login" style={{ textDecoration: 'none' }}>
-                            ¿Ya tienes una cuenta? Inicia sesión
-                        </Link>
-                    </Box>
-                </Box>
-            </Box>
-        </Container>
-    );
+  return (
+    <Container maxWidth="xs" className="fade-in" sx={{ mt: { xs: 4, sm: 8 }, mb: 6 }}>
+      <Paper
+        className="glass-card"
+        sx={{
+          p: 4,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          borderColor: 'rgba(225, 6, 0, 0.3) !important',
+        }}
+      >
+        <Avatar
+          sx={{
+            m: 1,
+            bgcolor: 'primary.main',
+            boxShadow: '0 0 15px rgba(225,6,0,0.6)',
+            width: 48,
+            height: 48,
+          }}
+        >
+          <PersonAddOutlinedIcon />
+        </Avatar>
+
+        <Typography variant="h5" className="font-racing" align="center" sx={{ mb: 1, color: '#fff' }}>
+          REGISTRO DE PILOTO
+        </Typography>
+        <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+          Crea tu cuenta para empezar a predecir y sumar puntos
+        </Typography>
+
+        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ width: '100%' }}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="username"
+            label="Nombre de Usuario"
+            name="username"
+            autoComplete="username"
+            autoFocus
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <PersonIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="email"
+            label="Correo Electrónico"
+            name="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <EmailIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            name="password"
+            label="Contraseña"
+            type="password"
+            id="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <KeyIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+
+          {error && (
+            <Alert
+              severity="error"
+              sx={{
+                mt: 2,
+                borderRadius: 2,
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                color: '#fca5a5',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+              }}
+            >
+              {error}
+            </Alert>
+          )}
+
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            color="primary"
+            size="large"
+            className="font-racing"
+            sx={{ mt: 3, mb: 2, py: 1.3 }}
+            disabled={loading}
+          >
+            {loading ? <CircularProgress size={24} color="inherit" /> : 'UNIRSE AL PADDOCK'}
+          </Button>
+
+          <Box sx={{ textAlign: 'center', mt: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              ¿Ya tienes cuenta?{' '}
+              <Link to="/login" style={{ color: '#38bdf8', textDecoration: 'none', fontWeight: 600 }}>
+                Inicia sesión aquí
+              </Link>
+            </Typography>
+          </Box>
+        </Box>
+      </Paper>
+    </Container>
+  );
 }
 
 export default RegisterPage;

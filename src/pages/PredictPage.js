@@ -1,248 +1,270 @@
-// frontend/src/pages/PredictPage.js
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
-    Container, Typography, Box, TextField, Button,
-    CircularProgress, Alert, Card, CardContent, MenuItem, Select, InputLabel, FormControl
+  Container,
+  Typography,
+  Box,
+  Button,
+  CircularProgress,
+  Alert,
+  Paper,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
+  Snackbar,
+  Grid,
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SaveIcon from '@mui/icons-material/Save';
 import axios from 'axios';
+
 import API_BASE_URL from '../config';
 import { useAuth } from '../contexts/AuthContext';
-import { Link } from 'react-router-dom';
-
-// Sugerencia: Una lista básica de pilotos. En un proyecto real, esto podría venir del backend.
-const F1_DRIVERS_2024 = [
-    "Max Verstappen", "Yuki Tsunoda", "Charles Leclerc", "Lewis Hamilton",
-    "Andrea Kimi Antonelli", "George Russell", "Lando Norris", "Oscar Piastri",
-    "Fernando Alonso", "Lance Stroll", "Pierre Gasly", "Franco Colapinto",
-    " Isack Hadjar", "Liam Lawson", "Nico Hülkenberg", "Gabriel Bortoleto",
-    "Esteban Ocon", "Oliver Bearman", "Alexander Albon", "Carlos Sainz"
-];
+import { F1_DRIVER_NAMES } from '../data/f1Drivers';
+import PodiumDisplay from '../components/PodiumDisplay';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorAlert from '../components/ErrorAlert';
+import { formatRaceDate } from '../utils/formatters';
 
 function PredictPage() {
-    const { raceId } = useParams(); // Obtiene el ID de la carrera de la URL
-    const navigate = useNavigate();
-    const { user } = useAuth(); // Necesitamos saber si el usuario está logueado
-    
-    const [race, setRace] = useState(null);
-    const [predictedWinner, setPredictedWinner] = useState('');
-    const [predictedSecond, setPredictedSecond] = useState('');
-    const [predictedThird, setPredictedThird] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState(null);
-    const [successMessage, setSuccessMessage] = useState(null);
-    const [initialPrediction, setInitialPrediction] = useState(null); // Para saber si ya hay una predicción
+  const { raceId } = useParams();
+  const { user } = useAuth();
 
-    useEffect(() => {
-        const fetchRaceAndPrediction = async () => {
-            try {
-                // Obtener detalles de la carrera
-                const raceRes = await axios.get(`${API_BASE_URL}/races/${raceId}`);
-                setRace(raceRes.data);
+  const [race, setRace] = useState(null);
+  const [predictedWinner, setPredictedWinner] = useState('');
+  const [predictedSecond, setPredictedSecond] = useState('');
+  const [predictedThird, setPredictedThird] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [initialPrediction, setInitialPrediction] = useState(null);
 
-                // Obtener predicción existente del usuario para esta carrera (si existe)
-                // Solo si el usuario está logueado
-                if (user) {
-                    try {
-                        const predictionRes = await axios.get(`${API_BASE_URL}/predictions/${raceId}/my`);
-                        setPredictedWinner(predictionRes.data.predictedWinner);
-                        setPredictedSecond(predictionRes.data.predictedSecond);
-                        setPredictedThird(predictionRes.data.predictedThird);
-                        setInitialPrediction(predictionRes.data); // Guarda la predicción inicial
-                    } catch (predErr) {
-                        // Si no hay predicción existente, no es un error crítico aquí
-                        if (predErr.response && predErr.response.status === 404) {
-                            console.log('No existing prediction for this race and user.');
-                        } else {
-                            console.error('Error fetching existing prediction:', predErr.response ? predErr.response.data : predErr.message);
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error('Error fetching race or prediction:', err.response ? err.response.data : err.message);
-                setError('No se pudo cargar la información de la carrera o tu predicción.');
-            } finally {
-                setLoading(false);
-            }
-        };
+  useEffect(() => {
+    const fetchRaceAndPrediction = async () => {
+      try {
+        const raceRes = await axios.get(`${API_BASE_URL}/races/${raceId}`);
+        setRace(raceRes.data);
 
-        if (user) { // Solo si el usuario está logueado, intentamos buscar la predicción
-            fetchRaceAndPrediction();
-        } else {
-            // Si no está logueado, mostrar mensaje o redirigir
-            setLoading(false);
-            setError('Debes iniciar sesión para hacer una predicción.');
-            // Opcional: navigate('/login');
+        if (user) {
+          try {
+            const predictionRes = await axios.get(`${API_BASE_URL}/predictions/${raceId}/my`);
+            setPredictedWinner(predictionRes.data.predictedWinner || '');
+            setPredictedSecond(predictionRes.data.predictedSecond || '');
+            setPredictedThird(predictionRes.data.predictedThird || '');
+            setInitialPrediction(predictionRes.data);
+          } catch (predErr) {
+            // No existing prediction found, completely fine
+          }
         }
-
-    }, [raceId, user]); // Depende de raceId y si el usuario cambia
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError(null);
-        setSuccessMessage(null);
-        setSubmitting(true);
-
-        // Validar que los 3 pilotos sean diferentes
-        const selectedDrivers = new Set([predictedWinner, predictedSecond, predictedThird]);
-        if (selectedDrivers.size !== 3 || predictedWinner === '' || predictedSecond === '' || predictedThird === '') {
-            setError('Por favor, selecciona 3 pilotos diferentes para los tres primeros puestos.');
-            setSubmitting(false);
-            return;
-        }
-
-        try {
-            const res = await axios.post(`${API_BASE_URL}/predictions`, {
-                raceId,
-                predictedWinner,
-                predictedSecond,
-                predictedThird
-            });
-            setSuccessMessage(res.data.msg || 'Predicción guardada exitosamente.');
-            setInitialPrediction(res.data.prediction); // Actualiza la predicción inicial
-            // Opcional: Redirigir o limpiar formulario después de un tiempo
-            // setTimeout(() => navigate('/races'), 2000);
-        } catch (err) {
-            console.error('Error submitting prediction:', err.response ? err.response.data : err.message);
-            setError(err.response?.data?.msg || 'Error al guardar la predicción. Asegúrate de que las predicciones estén abiertas.');
-        } finally {
-            setSubmitting(false);
-        }
+      } catch (err) {
+        console.error('Error fetching race:', err);
+        setError('No se pudo cargar la información de la carrera.');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    if (loading) {
-        return (
-            <Box display="flex" justifyContent="center" alignItems="center" height="80vh">
-                <CircularProgress />
-            </Box>
-        );
+    if (user) {
+      fetchRaceAndPrediction();
+    } else {
+      setLoading(false);
+      setError('Debes iniciar sesión para hacer una predicción.');
+    }
+  }, [raceId, user]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+    setSubmitting(true);
+
+    const selectedDrivers = new Set([predictedWinner, predictedSecond, predictedThird]);
+    if (selectedDrivers.size !== 3 || !predictedWinner || !predictedSecond || !predictedThird) {
+      setError('Por favor, selecciona 3 pilotos diferentes para el podio.');
+      setSubmitting(false);
+      return;
     }
 
-    if (error && !race) { // Si hay un error y la carrera no pudo cargarse
-        return (
-            <Container maxWidth="md" sx={{ mt: 4 }}>
-                <Alert severity="error">{error}</Alert>
-                <Button component={Link} to="/races" sx={{ mt: 2 }}>Volver a Carreras</Button>
-            </Container>
-        );
+    try {
+      const res = await axios.post(`${API_BASE_URL}/predictions`, {
+        raceId,
+        predictedWinner,
+        predictedSecond,
+        predictedThird,
+      });
+      setSuccessMessage(res.data.msg || '¡Predicción guardada exitosamente!');
+      setInitialPrediction(res.data.prediction);
+    } catch (err) {
+      console.error('Error submitting prediction:', err);
+      setError(err.response?.data?.msg || 'Error al guardar la predicción.');
+    } finally {
+      setSubmitting(false);
     }
+  };
 
-    if (!race || !race.isPredictionOpen) {
-        return (
-            <Container maxWidth="md" sx={{ mt: 4 }}>
-                <Alert severity="warning">
-                    {race ? `Las predicciones para ${race.name} ya están cerradas.` : 'Carrera no encontrada o predicciones no disponibles.'}
-                </Alert>
-                <Button component={Link} to="/races" sx={{ mt: 2 }}>Volver a Carreras</Button>
-            </Container>
-        );
-    }
+  if (loading) return <LoadingSpinner message="Cargando datos de la carrera..." />;
+  if (error && !race) return <ErrorAlert message={error} />;
 
+  if (!race) {
+    return <ErrorAlert message="Carrera no encontrada." />;
+  }
 
-    return (
-        <Container maxWidth="md" sx={{ mt: 4 }}>
-            <Card>
-                <CardContent>
-                    <Typography variant="h5" component="h1" gutterBottom>
-                        Predecir para: {race ? race.name : 'Cargando...'}
-                    </Typography>
-                    <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
-                        Fecha de la carrera: {race ? new Date(race.date).toLocaleString() : '...'}
-                    </Typography>
+  const isClosed = !race.isPredictionOpen;
 
-                    {initialPrediction && (
-                        <Alert severity="info" sx={{ mb: 2 }}>
-                            Ya tienes una predicción para esta carrera. Estás editándola.
-                        </Alert>
-                    )}
-                    {successMessage && (
-                        <Alert severity="success" sx={{ mb: 2 }}>
-                            {successMessage}
-                        </Alert>
-                    )}
-                    {error && (
-                        <Alert severity="error" sx={{ mb: 2 }}>
-                            {error}
-                        </Alert>
-                    )}
+  return (
+    <Container maxWidth="md" className="fade-in" sx={{ mt: { xs: 2, md: 4 }, mb: 6 }}>
+      <Button
+        component={Link}
+        to="/races"
+        startIcon={<ArrowBackIcon />}
+        sx={{ mb: 2, color: '#94a3b8' }}
+      >
+        Volver a Carreras
+      </Button>
 
-                    <Box component="form" onSubmit={handleSubmit} noValidate>
-                        <FormControl fullWidth margin="normal">
-                            <InputLabel id="winner-label">Ganador (1º Puesto)</InputLabel>
-                            <Select
-                                labelId="winner-label"
-                                id="predictedWinner"
-                                value={predictedWinner}
-                                label="Ganador (1º Puesto)"
-                                onChange={(e) => setPredictedWinner(e.target.value)}
-                            >
-                                {F1_DRIVERS_2024.map((driver) => (
-                                    <MenuItem key={driver} value={driver}>
-                                        {driver}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+      <Paper
+        className="glass-card"
+        sx={{
+          p: { xs: 3, sm: 5 },
+          borderColor: isClosed
+            ? 'rgba(239, 68, 68, 0.3) !important'
+            : 'rgba(225, 6, 0, 0.3) !important',
+        }}
+      >
+        {/* Race Header */}
+        <Box textAlign="center" mb={4}>
+          <Typography variant="caption" className="font-racing" color="primary" sx={{ letterSpacing: 2 }}>
+            RONDA {race.round || 1} • {race.location}
+          </Typography>
+          <Typography
+            variant="h4"
+            className="font-racing"
+            sx={{ fontWeight: 800, color: '#ffffff', mt: 0.5, mb: 1 }}
+          >
+            {race.name}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Fecha: {formatRaceDate(race.date)}
+          </Typography>
+        </Box>
 
-                        <FormControl fullWidth margin="normal">
-                            <InputLabel id="second-label">Segundo Puesto</InputLabel>
-                            <Select
-                                labelId="second-label"
-                                id="predictedSecond"
-                                value={predictedSecond}
-                                label="Segundo Puesto"
-                                onChange={(e) => setPredictedSecond(e.target.value)}
-                            >
-                                {F1_DRIVERS_2024.map((driver) => (
-                                    <MenuItem key={driver} value={driver}>
-                                        {driver}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+        {/* Closed warning or Existing prediction notice */}
+        {isClosed && (
+          <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
+            Las predicciones para esta carrera ya están cerradas. Los campos son de solo lectura.
+          </Alert>
+        )}
 
-                        <FormControl fullWidth margin="normal">
-                            <InputLabel id="third-label">Tercer Puesto</InputLabel>
-                            <Select
-                                labelId="third-label"
-                                id="predictedThird"
-                                value={predictedThird}
-                                label="Tercer Puesto"
-                                onChange={(e) => setPredictedThird(e.target.value)}
-                            >
-                                {F1_DRIVERS_2024.map((driver) => (
-                                    <MenuItem key={driver} value={driver}>
-                                        {driver}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+        {!isClosed && initialPrediction && (
+          <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
+            Ya tienes una predicción enviada para esta carrera. Puedes editar tu podio antes del cierre.
+          </Alert>
+        )}
 
-                        <Button
-                            type="submit"
-                            fullWidth
-                            variant="contained"
-                            sx={{ mt: 3, mb: 2 }}
-                            disabled={submitting || !user} // Deshabilitar si no hay usuario logueado
-                        >
-                            {submitting ? <CircularProgress size={24} /> : 'Guardar Predicción'}
-                        </Button>
-                        {!user && (
-                            <Typography variant="body2" color="error" align="center">
-                                Debes iniciar sesión para hacer una predicción.
-                            </Typography>
-                        )}
-                        <Box sx={{ textAlign: 'center' }}>
-                            <Link to="/races" style={{ textDecoration: 'none' }}>
-                                Volver al listado de carreras
-                            </Link>
-                        </Box>
-                    </Box>
-                </CardContent>
-            </Card>
-        </Container>
-    );
+        {error && (
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Live Podium Preview */}
+        <PodiumDisplay
+          first={predictedWinner}
+          second={predictedSecond}
+          third={predictedThird}
+          title="TU PODIO PRONOSTICADO"
+        />
+
+        {/* Prediction Form */}
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 4 }}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth disabled={isClosed}>
+                <InputLabel id="winner-label">1º Puesto (Ganador)</InputLabel>
+                <Select
+                  labelId="winner-label"
+                  value={predictedWinner}
+                  label="1º Puesto (Ganador)"
+                  onChange={(e) => setPredictedWinner(e.target.value)}
+                >
+                  {F1_DRIVER_NAMES.map((driver) => (
+                    <MenuItem key={driver} value={driver}>
+                      {driver}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth disabled={isClosed}>
+                <InputLabel id="second-label">2º Puesto</InputLabel>
+                <Select
+                  labelId="second-label"
+                  value={predictedSecond}
+                  label="2º Puesto"
+                  onChange={(e) => setPredictedSecond(e.target.value)}
+                >
+                  {F1_DRIVER_NAMES.map((driver) => (
+                    <MenuItem key={driver} value={driver}>
+                      {driver}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth disabled={isClosed}>
+                <InputLabel id="third-label">3º Puesto</InputLabel>
+                <Select
+                  labelId="third-label"
+                  value={predictedThird}
+                  label="3º Puesto"
+                  onChange={(e) => setPredictedThird(e.target.value)}
+                >
+                  {F1_DRIVER_NAMES.map((driver) => (
+                    <MenuItem key={driver} value={driver}>
+                      {driver}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+
+          {!isClosed && (
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              color="primary"
+              size="large"
+              startIcon={<SaveIcon />}
+              className="font-racing"
+              disabled={submitting}
+              sx={{ mt: 4, py: 1.5 }}
+            >
+              {submitting ? <CircularProgress size={24} color="inherit" /> : 'GUARDAR PREDICCIÓN'}
+            </Button>
+          )}
+        </Box>
+      </Paper>
+
+      {/* Toast Notification */}
+      <Snackbar
+        open={Boolean(successMessage)}
+        autoHideDuration={4000}
+        onClose={() => setSuccessMessage(null)}
+      >
+        <Alert severity="success" sx={{ width: '100%', borderRadius: 2 }}>
+          {successMessage}
+        </Alert>
+      </Snackbar>
+    </Container>
+  );
 }
 
 export default PredictPage;
